@@ -1,7 +1,7 @@
 
 # Fedora review: http://bugzilla.redhat.com/166008
 
-%if 0%{?fedora} || 0%{?rhel} == 7
+%if 0%{?fedora} || 0%{?rhel} != 6
 %define _with_devel 1
 # ship static lib, matches default upstream config
 # as convenience to users, since our hacked shlib can potentially break 
@@ -51,12 +51,6 @@ Source21: imap.pam
 # legacy/old pam setup, using pam_stack.so
 Source22: imap-legacy.pam
 
-Source31: imap-xinetd
-Source32: imaps-xinetd
-Source33: ipop2-xinetd
-Source34: ipop3-xinetd
-Source35: pop3s-xinetd
-
 Patch1: imap-2007-paths.patch
 # See http://bugzilla.redhat.com/229781 , http://bugzilla.redhat.com/127271
 Patch2: imap-2004a-doc.patch
@@ -65,12 +59,13 @@ Patch9: imap-2007e-shared.patch
 Patch10: imap-2007e-authmd5.patch
 Patch11: imap-2007e-system_c_client.patch
 Patch12: imap-2007e-epoll.patch
+Patch13: 1006_openssl1.1_autoverify.patch
+Patch14: imap-2007f-format-security.patch
 
 BuildRequires: krb5-devel
 BuildRequires: openssl-devel
 BuildRequires: pam-devel
 
-Requires: xinetd
 Requires(post): openssl
 
 %if 0%{?_with_system_libc_client}
@@ -156,6 +151,8 @@ This package contains some utilities for managing UW IMAP email,including:
 %patch9 -p1 -b .shared
 %patch10 -p1 -b .authmd5
 %patch12 -p1 -b .epoll
+%patch13 -p1 -b .ssl
+%patch14 -p1 -b .security
 
 %if 0%{?fedora} > 11 || 0%{?rhel} > 5
 install -p -m644 %{SOURCE20} imap.pam
@@ -253,12 +250,6 @@ install -p -m644 src/{dmail/dmail,mailutil/mailutil,tmail/tmail}.1 $RPM_BUILD_RO
 install -p -m644 -D imap.pam $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/imap
 install -p -m644 -D imap.pam $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/pop
 
-install -p -m644 -D %{SOURCE31} $RPM_BUILD_ROOT%{_sysconfdir}/xinetd.d/imap
-install -p -m644 -D %{SOURCE32} $RPM_BUILD_ROOT%{_sysconfdir}/xinetd.d/imaps
-install -p -m644 -D %{SOURCE33} $RPM_BUILD_ROOT%{_sysconfdir}/xinetd.d/ipop2
-install -p -m644 -D %{SOURCE34} $RPM_BUILD_ROOT%{_sysconfdir}/xinetd.d/ipop3
-install -p -m644 -D %{SOURCE35} $RPM_BUILD_ROOT%{_sysconfdir}/xinetd.d/pop3s
-
 # %ghost'd *.pem files
 mkdir -p $RPM_BUILD_ROOT%{ssldir}/certs
 touch $RPM_BUILD_ROOT%{ssldir}/certs/{imapd,ipop3d}.pem
@@ -305,13 +296,8 @@ rm -rf $RPM_BUILD_ROOT
 %doc docs/SSLBUILD
 %config(noreplace) %{_sysconfdir}/pam.d/imap
 %config(noreplace) %{_sysconfdir}/pam.d/pop
-%config(noreplace) %{_sysconfdir}/xinetd.d/imap
-%config(noreplace) %{_sysconfdir}/xinetd.d/ipop2
-%config(noreplace) %{_sysconfdir}/xinetd.d/ipop3
 # These need to be replaced (ie, can't use %%noreplace), or imaps/pop3s can fail on upgrade
 # do this in a %trigger or something not here... -- Rex
-%config(noreplace) %{_sysconfdir}/xinetd.d/imaps
-%config(noreplace) %{_sysconfdir}/xinetd.d/pop3s
 %attr(0600,root,root) %ghost %config(missingok,noreplace) %verify(not md5 size mtime) %{ssldir}/certs/imapd.pem
 %attr(0600,root,root) %ghost %config(missingok,noreplace) %verify(not md5 size mtime) %{ssldir}/certs/ipop3d.pem
 %{_mandir}/man8/*
